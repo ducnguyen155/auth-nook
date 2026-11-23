@@ -3,7 +3,9 @@ import { Copy, Eye, EyeOff, KeyRound, Plus, Search, Wand2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { ItemActionsMenu } from '../../components/ui/ItemActionsMenu.tsx';
-import { clipboardGuard, vaultService } from '../../core/runtime.ts';
+import { ProtectedRevealModal } from '../../components/ui/ProtectedRevealModal.tsx';
+import type { RevealAction, RevealChallenge, RevealGrant } from '../../core/reveal/revealEngine.ts';
+import { clipboardGuard, revealEngine, vaultService } from '../../core/runtime.ts';
 import type { VaultItemSummary } from '../../core/vault/types.ts';
 import { useSettingsStore } from '../../stores/settingsStore.ts';
 import { useToastStore } from '../../stores/toastStore.ts';
@@ -27,13 +29,15 @@ export function PasswordsView() {
     setSelectedTag,
     deleteItem,
   } = useVaultStore();
-  const clipboardTtl = useSettingsStore((s) => s.settings.clipboardClearSeconds);
+  const { settings, hasPasskey } = useSettingsStore();
+  const clipboardTtl = settings.clipboardClearSeconds;
   const pushToast = useToastStore((s) => s.push);
 
   const [formOpen, setFormOpen] = useState(false);
   const [genOpen, setGenOpen] = useState(false);
   const [editing, setEditing] = useState<PasswordItem | null>(null);
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, string>>({});
+  const [activeChallenge, setActiveChallenge] = useState<RevealChallenge | null>(null);
   const revealTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
@@ -88,42 +92,75 @@ export function PasswordsView() {
     return map;
   }, [categories]);
 
+  const hidePassword = (id: string) => {
+    clearRevealTimer(id);
+    setRevealedPasswords((prev) => {
+      if (prev[id] === undefined) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
   const handleCopyUsername = async (username: string) => {
     if (!username) return;
     await clipboardGuard.copySensitive(username, clipboardTtl);
     pushToast('Username copied.', 'success');
   };
 
-  const handleCopyPassword = async (id: string) => {
-    const secret = vaultService.readPasswordSecret(id);
-    await clipboardGuard.copySensitive(secret.password, clipboardTtl);
-    pushToast(`Password copied (clears in ${clipboardTtl}s).`, 'success');
-  };
-
-  const handleToggleReveal = (id: string) => {
-    if (revealedPasswords[id] !== undefined) {
-      clearRevealTimer(id);
-      setRevealedPasswords((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
+  const executeRevealAction = async (item: PasswordItem, action: RevealAction) => {
+    if (action === 'edit') {
+      hidePassword(item.id);
+      setEditing(item);
+      setFormOpen(true);
       return;
     }
 
-    const secret = vaultService.readPasswordSecret(id);
-    clearRevealTimer(id);
+    const secret = vaultService.readPasswordSecret(item.id);
+    if (action === 'copy') {
+      await clipboardGuard.copySensitive(secret.password, clipboardTtl);
+      pushToast(`Password copied (clears in ${clipboardTtl}s).`, 'success');
+      return;
+    }
+
+    clearRevealTimer(item.id);
     const timer = setTimeout(() => {
-      revealTimersRef.current.delete(id);
+      revealTimersRef.current.delete(item.id);
       setRevealedPasswords((prev) => {
-        if (prev[id] === undefined) return prev;
+        if (prev[item.id] === undefined) return prev;
         const next = { ...prev };
-        delete next[id];
+        delete next[item.id];
         return next;
       });
     }, PASSWORD_REVEAL_TTL_MS);
-    revealTimersRef.current.set(id, timer);
-    setRevealedPasswords((prev) => ({ ...prev, [id]: secret.password }));
+    revealTimersRef.current.set(item.id, timer);
+    setRevealedPasswords((prev) => ({ ...prev, [item.id]: secret.password }));
+  };
+
+  const requestAction = async (item: PasswordItem, action: RevealAction) => {
+    if (action === 'show' && revealedPasswords[item.id] !== undefined) {
+      hidePassword(item.id);
+      return;
+    }
+
+    if (!revealEngine.hasPasskey()) {
+      await executeRevealAction(item, action);
+      return;
+    }
+
+    const challenge = await revealEngine.createChallenge(item.id, action);
+    setActiveChallenge(challenge);
+  };
+
+  const handleVerified = async (grant: RevealGrant) => {
+    setActiveChallenge(null);
+    if (!revealEngine.consumeGrant(grant.grantId, grant.itemId, grant.action)) {
+      pushToast('Reveal grant expired or invalid.', 'error');
+      return;
+    }
+    const item = passwordItems.find((i) => i.id === grant.itemId);
+    if (!item) return;
+    await executeRevealAction(item, grant.action);
   };
 
   const handleDelete = async (item: PasswordItem) => {
@@ -144,6 +181,7 @@ export function PasswordsView() {
           <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Passwords</h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             {passwordItems.length} {passwordItems.length === 1 ? 'entry' : 'entries'} stored locally
+            {hasPasskey ? ' • Protected Reveal enabled' : ''}
           </p>
         </div>
 
@@ -306,7 +344,7 @@ export function PasswordsView() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => void handleCopyPassword(item.id)}
+                      onClick={() => void requestAction(item, 'copy')}
                       title="Copy password"
                     >
                       <Copy className="h-3.5 w-3.5" />
@@ -315,7 +353,7 @@ export function PasswordsView() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleToggleReveal(item.id)}
+                      onClick={() => void requestAction(item, 'show')}
                       title={revealed !== undefined ? 'Hide password' : 'Show password'}
                     >
                       {revealed !== undefined ? (
@@ -325,10 +363,7 @@ export function PasswordsView() {
                       )}
                     </Button>
                     <ItemActionsMenu
-                      onEdit={() => {
-                        setEditing(item);
-                        setFormOpen(true);
-                      }}
+                      onEdit={() => void requestAction(item, 'edit')}
                       onDelete={() => void handleDelete(item)}
                     />
                   </div>
@@ -341,11 +376,21 @@ export function PasswordsView() {
 
       <PasswordFormModal
         open={formOpen}
-        onClose={() => setFormOpen(false)}
+        onClose={() => {
+          setFormOpen(false);
+          setEditing(null);
+        }}
         editingItem={editing}
       />
 
       <PasswordGeneratorModal open={genOpen} onClose={() => setGenOpen(false)} />
+
+      <ProtectedRevealModal
+        challenge={activeChallenge}
+        targetLabel="this password"
+        onClose={() => setActiveChallenge(null)}
+        onVerified={(grant) => void handleVerified(grant)}
+      />
     </div>
   );
 }

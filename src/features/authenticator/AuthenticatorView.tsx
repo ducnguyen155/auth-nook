@@ -17,7 +17,7 @@ import { useRevealStore } from '../../stores/revealStore.ts';
 import { useSettingsStore } from '../../stores/settingsStore.ts';
 import { useToastStore } from '../../stores/toastStore.ts';
 import { useVaultStore } from '../../stores/vaultStore.ts';
-import { ProtectedRevealModal } from './ProtectedRevealModal.tsx';
+import { ProtectedRevealModal } from '../../components/ui/ProtectedRevealModal.tsx';
 import { TotpFormModal } from './TotpFormModal.tsx';
 
 type TotpItem = Extract<VaultItemSummary, { type: 'totp' }>;
@@ -320,6 +320,7 @@ export function AuthenticatorView() {
 
       <ProtectedRevealModal
         challenge={activeChallenge}
+        targetLabel="this OTP"
         onClose={() => setActiveChallenge(null)}
         onVerified={(grant) => void handleVerified(grant)}
       />

@@ -9,7 +9,7 @@ AuthNook is a lightweight, local-first desktop application for managing password
 - **Password Manager:** Add, edit, search, and organize credentials with categories and tags, plus a built-in CSPRNG password generator.
 - **Authenticator (TOTP):** Import accounts via QR code (file, drag-and-drop, or clipboard paste) or manual Base32 secret key, with live countdown timers.
 - **Static Code Composition:** Optionally attach an encrypted static code (e.g. `AAA`) per authenticator account so copying produces `AAA123456` (configurable prefix/suffix and separator).
-- **Protected Reveal (Anti-Shoulder-Surfing):** OTP codes are hidden by default. Showing or copying an OTP requires verifying a single random character from your Passkey (`4–8` digits). Challenges are single-use, never store plaintext Passkeys, auto-hide after 8 seconds, and lock the vault after 3 consecutive failed attempts.
+- **Protected Reveal (Anti-Shoulder-Surfing):** Passwords and OTP codes are hidden by default. Showing, copying, or editing a password or OTP requires verifying a single random character from your Passkey (`4–8` digits). Challenges are single-use, never store plaintext Passkeys, auto-hide after reveal, and lock the vault after 3 consecutive failed attempts.
 - **Local Encryption & Device Binding:**
   - Key derivation with **Argon2id** (`64 MiB`, `3` iterations) and authenticated encryption with **XChaCha20-Poly1305**.
   - Optional **Device Binding** stores a 32-byte Device Secret in the OS secure store (Windows DPAPI `CurrentUser` via a minimal verified helper, or macOS login Keychain via `/usr/bin/security`), preventing vault decryption if copied to another machine or OS user.

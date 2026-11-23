@@ -77,4 +77,62 @@ describe('Protected Reveal Engine', () => {
     }
     expect(vault.isUnlocked()).toBe(false);
   });
+
+  it('scopes single-use grants to matching password itemId and action (show, copy, edit)', async () => {
+    const platform = new MemoryPlatform();
+    const vault = new VaultService(platform, {
+      kdfParams: TEST_KDF,
+      deviceKeyStore: new MemoryDeviceKeyStore(),
+    });
+    await vault.setup('master-pw-123', { deviceBound: false });
+
+    const passkey = '48291';
+    await vault.setPasskeyRecord(buildPasskeyRecord(vault.getPasskeyKey(), passkey));
+
+    const pwItem = await vault.createPasswordItem(
+      {
+        title: 'GitHub',
+        website: 'https://github.com',
+        username: 'alice',
+        categoryId: null,
+        tags: [],
+      },
+      { password: 'super-secret-password', notes: '' }
+    );
+
+    const engine = new RevealEngine(vault, () => 2_000_000);
+
+    // Grant for 'show' cannot be used for 'edit' or another itemId
+    const showChallenge = await engine.createChallenge(pwItem.id, 'show');
+    const showResult = await engine.verify(showChallenge.challengeId, passkey[showChallenge.index]);
+    expect(showResult.ok).toBe(true);
+    if (showResult.ok) {
+      expect(engine.consumeGrant(showResult.grant.grantId, pwItem.id, 'edit')).toBe(false);
+    }
+
+    // Valid 'copy' grant succeeds once for matching (itemId, 'copy')
+    const copyChallenge = await engine.createChallenge(pwItem.id, 'copy');
+    const copyResult = await engine.verify(copyChallenge.challengeId, passkey[copyChallenge.index]);
+    expect(copyResult.ok).toBe(true);
+    if (copyResult.ok) {
+      expect(engine.consumeGrant(copyResult.grant.grantId, 'other-id', 'copy')).toBe(false);
+    }
+
+    const copyChallenge2 = await engine.createChallenge(pwItem.id, 'copy');
+    const copyResult2 = await engine.verify(copyChallenge2.challengeId, passkey[copyChallenge2.index]);
+    expect(copyResult2.ok).toBe(true);
+    if (copyResult2.ok) {
+      expect(engine.consumeGrant(copyResult2.grant.grantId, pwItem.id, 'copy')).toBe(true);
+      expect(engine.consumeGrant(copyResult2.grant.grantId, pwItem.id, 'copy')).toBe(false);
+    }
+
+    // Valid 'edit' grant succeeds once for matching (itemId, 'edit')
+    const editChallenge = await engine.createChallenge(pwItem.id, 'edit');
+    const editResult = await engine.verify(editChallenge.challengeId, passkey[editChallenge.index]);
+    expect(editResult.ok).toBe(true);
+    if (editResult.ok) {
+      expect(engine.consumeGrant(editResult.grant.grantId, pwItem.id, 'edit')).toBe(true);
+      expect(engine.consumeGrant(editResult.grant.grantId, pwItem.id, 'edit')).toBe(false);
+    }
+  });
 });

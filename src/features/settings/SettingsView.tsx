@@ -234,7 +234,7 @@ export function SettingsView() {
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {hasPasskey
                 ? 'Passkey is active. 3 consecutive wrong digits lock the vault.'
-                : 'Not configured yet. Set a 4-8 digit Passkey to protect OTP reveal & copy.'}
+                : 'Not configured yet. Set a 4-8 digit Passkey to protect password & OTP reveal, copy, and edit.'}
             </p>
           </div>
           {hasPasskey && (

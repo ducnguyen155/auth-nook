@@ -1,19 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { ShieldAlert } from 'lucide-react';
-import { Button } from '../../components/ui/Button.tsx';
-import { Input } from '../../components/ui/Input.tsx';
-import { Modal } from '../../components/ui/Modal.tsx';
+import { Button } from './Button.tsx';
+import { Input } from './Input.tsx';
+import { Modal } from './Modal.tsx';
 import type { RevealChallenge, RevealGrant } from '../../core/reveal/revealEngine.ts';
 import { revealEngine } from '../../core/runtime.ts';
 
 interface ProtectedRevealModalProps {
   challenge: RevealChallenge | null;
+  targetLabel?: string;
   onClose: () => void;
   onVerified: (grant: RevealGrant) => void;
 }
 
 export function ProtectedRevealModal({
   challenge,
+  targetLabel = 'this item',
   onClose,
   onVerified,
 }: ProtectedRevealModalProps) {
@@ -74,7 +76,7 @@ export function ProtectedRevealModal({
                 : challenge.action === 'edit'
                   ? 'edit'
                   : 'reveal'}{' '}
-              this OTP.
+              {targetLabel}.
             </div>
           </div>
 

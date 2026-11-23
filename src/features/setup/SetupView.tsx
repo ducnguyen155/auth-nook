@@ -129,7 +129,7 @@ export function SetupView() {
             value={passkey}
             onChange={(e) => setPasskey(e.target.value.replace(/\D/g, '').slice(0, 8))}
             placeholder="4-8 digits (e.g. 12345)"
-            hint="Used to verify a random character before showing or copying OTP codes. You can also set this later in Settings."
+            hint="Used to verify a random character before showing, copying, or editing passwords and OTP codes. You can also set this later in Settings."
           />
 
           {deviceBindingSupported && (
