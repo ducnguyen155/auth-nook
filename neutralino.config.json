@@ -1,0 +1,60 @@
+{
+  "$schema": "https://raw.githubusercontent.com/neutralinojs/neutralinojs/main/schemas/neutralino.config.schema.json",
+  "applicationId": "app.authnook.desktop",
+  "version": "0.1.0",
+  "defaultMode": "window",
+  "port": 0,
+  "documentRoot": "/dist/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "tokenSecurity": "one-time",
+  "exportAuthInfo": false,
+  "logging": {
+    "enabled": false,
+    "writeToLogFile": false
+  },
+  "nativeAllowList": [
+    "app.exit",
+    "window.*",
+    "events.*",
+    "os.getPath",
+    "os.showOpenDialog",
+    "os.showSaveDialog",
+    "os.spawnProcess",
+    "os.updateSpawnedProcess",
+    "filesystem.getStats",
+    "filesystem.readBinaryFile",
+    "filesystem.writeBinaryFile",
+    "filesystem.move",
+    "filesystem.remove",
+    "filesystem.createDirectory",
+    "clipboard.*"
+  ],
+  "modes": {
+    "window": {
+      "title": "AuthNook",
+      "icon": "/dist/icons/appIcon.png",
+      "width": 980,
+      "height": 660,
+      "minWidth": 760,
+      "minHeight": 520,
+      "fullScreen": false,
+      "alwaysOnTop": false,
+      "enableInspector": false,
+      "borderless": false,
+      "maximize": false,
+      "hidden": false,
+      "resizable": true,
+      "exitProcessOnClose": true
+    }
+  },
+  "cli": {
+    "binaryName": "AuthNook",
+    "resourcesPath": "/dist/",
+    "extensionsPath": "/extensions/",
+    "clientLibrary": "/dist/neutralino.js",
+    "binaryVersion": "5.5.0",
+    "clientVersion": "5.5.0"
+  }
+}

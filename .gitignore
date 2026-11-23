@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build & Release outputs
+dist/
+release/
+.tmp/
+
+# Neutralino downloaded binaries (re-downloaded via `npx neu update`)
+bin/neutralino-*
+
+# Logs & OS files
+*.log
+.DS_Store
+Thumbs.db
